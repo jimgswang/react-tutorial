@@ -59,8 +59,46 @@ class Board extends React.Component {
 
 Board.propTypes = {
   squares: PropTypes.array.isRequired,
-  winners: PropTypes.instanceOf(Game),
+  winners: PropTypes.instanceOf(Set),
   onClick: PropTypes.func.isRequired
+};
+
+function PlayingStatus(props) {
+  const status = `Next Player: ${props.next}`;
+  return (
+    <div>
+      { status }
+    </div>
+  );
+}
+
+PlayingStatus.propTypes = {
+  next: PropTypes.string.isRequired
+};
+
+function TiedStatus(props) {
+  return (
+    <div>
+      Tied!  <a href="#" onClick={ () => props.onClick() }> Click to play again </a>
+    </div>
+  );
+}
+
+TiedStatus.propTypes = {
+  onClick: PropTypes.func.isRequired
+};
+
+function WonStatus(props) {
+  const status = `The winner is ${props.winner}`;
+  return (
+    <div>
+      { status }
+    </div>
+  );
+}
+
+WonStatus.propTypes = {
+  winner: PropTypes.string.isRequired
 };
 
 class Game extends React.Component {
@@ -68,14 +106,7 @@ class Game extends React.Component {
   constructor() {
     super();
 
-    this.state = {
-      xIsNext: true,
-      history: [{
-        squares: Array(9).fill(null)
-      }],
-      stepNumber: 0,
-      winningIndexes: null
-    };
+    this.state = this.getNewState();
   }
 
   /**
@@ -106,18 +137,24 @@ class Game extends React.Component {
     return null;
   }
 
+  /**
+   * Determine if the game has finished by checking that all 9 squares are filled
+   * @return {boolean} if the game is finished
+   */
+  isFinished(squares) {
+    return squares.reduce( (finished, square) => {
+      return finished && !!square;
+    }, true);
+  }
+
   render() {
 
     const history = this.state.history;
     const current = history[history.length - 1];
     const winner = this.calculateWinner(current.squares);
-    const currentPlayer = this.state.xIsNext ? 'O' : 'X';
-
-    const status = winner ? 'Winner: ' + currentPlayer : 'Next Player: ' + (this.state.xIsNext ? 'X' : 'O');
 
     const moves = history.map( (step, moveNumber) => {
       const desc = moveNumber ? 'Move #' + moveNumber : 'Game Start';
-
       return (
         <li key={moveNumber}>
           <a href="#" onClick={ () => this.jumpTo(moveNumber) }> {desc} </a>
@@ -135,11 +172,24 @@ class Game extends React.Component {
           />
         </div>
         <div className="game-info">
-          <div>{ status }</div>
+          <div>{ this.getStatus(current.squares) }</div>
           <ol>{ moves }</ol>
         </div>
       </div>
     );
+  }
+
+  getStatus(squares) {
+    const winner = this.calculateWinner(squares);
+    if (winner) {
+      return <WonStatus winner={this.state.xIsNext ? 'O' : 'X'} />;
+    }
+    const finished = this.isFinished(squares);
+    if (finished) {
+      return <TiedStatus onClick={ () => this.newGame() } />;
+    }
+
+    return <PlayingStatus next={this.state.xIsNext ? 'X' : 'O'} />;
   }
 
   handleClick(i) {
@@ -182,6 +232,21 @@ class Game extends React.Component {
       stepNumber: moveNumber,
       winningIndexes: this.calculateWinner(current)
     });
+  }
+
+  newGame() {
+    this.setState(this.getNewState());
+  }
+
+  getNewState() {
+    return {
+      xIsNext: true,
+      history: [{
+        squares: Array(9).fill(null)
+      }],
+      stepNumber: 0,
+      winningIndexes: null
+    };
   }
 }
 
